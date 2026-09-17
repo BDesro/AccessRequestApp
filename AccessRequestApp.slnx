@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AccessRequestApp.Tests/AccessRequestApp.Tests.csproj" />
+  <Project Path="AccessRequestApp/AccessRequestApp.csproj" />
+</Solution>

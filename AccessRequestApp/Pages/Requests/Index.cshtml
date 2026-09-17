@@ -1,0 +1,96 @@
+@page
+@model AccessRequestApp.Pages.Requests.IndexModel
+@{
+    ViewData["Title"] = "Access Requests";
+}
+
+<h1>Access Requests</h1>
+
+@if (Model.StatusMessage is not null)
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">New Request</a>
+</p>
+
+@if (Model.Requests.Count == 0)
+{
+    <p class="text-muted">No access requests @(Model.IsAdministrator ? "" : "yet").</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>System</th>
+                <th>Justification</th>
+                @if (Model.IsAdministrator)
+                {
+                    <th>Requested By</th>
+                }
+                <th>Requested At (UTC)</th>
+                <th>Status</th>
+                <th>Decision</th>
+                @if (Model.IsAdministrator)
+                {
+                    <th>Actions</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model.Requests)
+            {
+                <tr>
+                    <td>@r.Id</td>
+                    <td>@r.SystemName</td>
+                    <td>@r.BusinessJustification</td>
+                    @if (Model.IsAdministrator)
+                    {
+                        <td>@r.RequestedByDisplayName</td>
+                    }
+                    <td>@r.RequestedAtUtc.ToString("u")</td>
+                    <td>
+                        <span class="badge @(r.Status switch {
+                            AccessRequestApp.Domain.AccessRequestStatus.Approved => "bg-success",
+                            AccessRequestApp.Domain.AccessRequestStatus.Denied => "bg-danger",
+                            _ => "bg-secondary"
+                        })">@r.Status</span>
+                    </td>
+                    <td>
+                        @if (r.DecidedByDisplayName is not null)
+                        {
+                            <div>by @r.DecidedByDisplayName</div>
+                            <div class="text-muted small">@r.DecidedAtUtc?.ToString("u")</div>
+                            @if (!string.IsNullOrWhiteSpace(r.DecisionReason))
+                            {
+                                <div class="small">"@r.DecisionReason"</div>
+                            }
+                        }
+                    </td>
+                    @if (Model.IsAdministrator)
+                    {
+                        <td style="min-width: 220px;">
+                            @if (r.Status == AccessRequestApp.Domain.AccessRequestStatus.Pending)
+                            {
+                                <form method="post" asp-page-handler="Approve" class="d-inline">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="post" asp-page-handler="Deny" class="mt-1">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="reason" class="form-control" placeholder="Denial reason (required)" required maxlength="1000" />
+                                        <button type="submit" class="btn btn-danger">Deny</button>
+                                    </div>
+                                </form>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
