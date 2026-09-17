@@ -61,9 +61,12 @@ public sealed class AccessRequestService(ApplicationDbContext db) : IAccessReque
         return ChangeStatusAsync(requestId, administratorUserId, reason, AccessRequestStatus.Denied, AuditAction.Denied, cancellationToken);
     }
 
-    // Reject requests that are no longer Pending: a conditional UPDATE (WHERE Status = Pending)
-    // guards against two admins deciding the same request concurrently. Wrapping it with the
-    // audit insert in one transaction keeps current-state and history in sync atomically.
+    // Reject requests that are no longer Pending, or that the deciding administrator submitted
+    // themselves (segregation of duties), with a single conditional UPDATE. This closes the race
+    // window between two admins deciding the same request concurrently, and — since RequestedByUserId
+    // is baked into the same WHERE clause — it's just as impossible to race past the self-decision
+    // rule. Wrapping the update with the audit insert in one transaction keeps current-state and
+    // history in sync atomically.
     private async Task ChangeStatusAsync(
         int requestId,
         string administratorUserId,
@@ -78,7 +81,9 @@ public sealed class AccessRequestService(ApplicationDbContext db) : IAccessReque
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var updated = await db.AccessRequests
-            .Where(r => r.Id == requestId && r.Status == AccessRequestStatus.Pending)
+            .Where(r => r.Id == requestId
+                && r.Status == AccessRequestStatus.Pending
+                && r.RequestedByUserId != administratorUserId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(r => r.Status, newStatus)
                 .SetProperty(r => r.DecidedByUserId, administratorUserId)
@@ -88,6 +93,19 @@ public sealed class AccessRequestService(ApplicationDbContext db) : IAccessReque
 
         if (updated == 0)
         {
+            // The single UPDATE above can't distinguish "not pending" from "self-decision" — this
+            // extra read only runs on the (rare) failure path, to report which one it was.
+            var existing = await db.AccessRequests.AsNoTracking()
+                .Where(r => r.Id == requestId)
+                .Select(r => new { r.RequestedByUserId })
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (existing is not null && existing.RequestedByUserId == administratorUserId)
+            {
+                throw new SelfDecisionNotAllowedException(
+                    $"Administrator {administratorUserId} cannot decide their own request {requestId}.");
+            }
+
             throw new InvalidAccessRequestTransitionException(
                 $"Access request {requestId} does not exist or is no longer pending.");
         }

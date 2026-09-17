@@ -24,6 +24,8 @@ public sealed class IndexModel(
 {
     public bool IsAdministrator { get; private set; }
 
+    public string? CurrentUserId { get; private set; }
+
     public IReadOnlyList<AccessRequestRow> Requests { get; private set; } = [];
 
     [TempData]
@@ -32,6 +34,7 @@ public sealed class IndexModel(
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         var userId = userManager.GetUserId(User);
+        CurrentUserId = userId;
         IsAdministrator = User.IsInRole(ApplicationRoles.Administrator);
 
         IQueryable<AccessRequest> query = db.AccessRequests.AsNoTracking();
@@ -62,6 +65,7 @@ public sealed class IndexModel(
                 r.Id,
                 r.SystemName,
                 r.BusinessJustification,
+                r.RequestedByUserId,
                 displayNames.GetValueOrDefault(r.RequestedByUserId, r.RequestedByUserId),
                 r.RequestedAtUtc,
                 r.Status,
@@ -90,6 +94,11 @@ public sealed class IndexModel(
         {
             await requestService.ApproveAsync(id, adminId, reason, cancellationToken);
             StatusMessage = $"Request #{id} approved.";
+        }
+        catch (SelfDecisionNotAllowedException ex)
+        {
+            logger.LogWarning("Blocked self-approval attempt on request {RequestId} by {AdminId}: {Reason}", id, adminId, ex.Message);
+            StatusMessage = "You cannot approve your own request.";
         }
         catch (InvalidAccessRequestTransitionException ex)
         {
@@ -124,6 +133,11 @@ public sealed class IndexModel(
         {
             StatusMessage = "A reason is required to deny a request.";
         }
+        catch (SelfDecisionNotAllowedException ex)
+        {
+            logger.LogWarning("Blocked self-denial attempt on request {RequestId} by {AdminId}: {Reason}", id, adminId, ex.Message);
+            StatusMessage = "You cannot deny your own request.";
+        }
         catch (InvalidAccessRequestTransitionException ex)
         {
             logger.LogInformation("Invalid deny transition on request {RequestId}: {Reason}", id, ex.Message);
@@ -138,6 +152,7 @@ public sealed record AccessRequestRow(
     int Id,
     string SystemName,
     string BusinessJustification,
+    string RequestedByUserId,
     string RequestedByDisplayName,
     DateTimeOffset RequestedAtUtc,
     AccessRequestStatus Status,

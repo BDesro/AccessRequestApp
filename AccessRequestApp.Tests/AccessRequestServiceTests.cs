@@ -184,4 +184,45 @@ public sealed class AccessRequestServiceTests : IDisposable
         await Assert.ThrowsAsync<InvalidAccessRequestTransitionException>(
             () => new AccessRequestService(db2).DenyAsync(id, "admin-2", "Too late", CancellationToken.None));
     }
+
+    [Fact]
+    public async Task ApproveAsync_OnOwnRequest_ThrowsAndLeavesItPending()
+    {
+        int id;
+        using (var db = CreateContext())
+        {
+            id = await new AccessRequestService(db).CreateAsync("Salesforce", "Need it for sales.", "admin-1", CancellationToken.None);
+        }
+
+        using (var db = CreateContext())
+        {
+            await Assert.ThrowsAsync<SelfDecisionNotAllowedException>(
+                () => new AccessRequestService(db).ApproveAsync(id, "admin-1", null, CancellationToken.None));
+        }
+
+        using var verify = CreateContext();
+        var request = await verify.AccessRequests.SingleAsync(r => r.Id == id);
+        Assert.Equal(AccessRequestStatus.Pending, request.Status);
+        Assert.False(await verify.AccessRequestAuditEvents.AnyAsync(e => e.AccessRequestId == id && e.Action == AuditAction.Approved));
+    }
+
+    [Fact]
+    public async Task DenyAsync_OnOwnRequest_ThrowsAndLeavesItPending()
+    {
+        int id;
+        using (var db = CreateContext())
+        {
+            id = await new AccessRequestService(db).CreateAsync("Salesforce", "Need it for sales.", "admin-1", CancellationToken.None);
+        }
+
+        using (var db = CreateContext())
+        {
+            await Assert.ThrowsAsync<SelfDecisionNotAllowedException>(
+                () => new AccessRequestService(db).DenyAsync(id, "admin-1", "No reason", CancellationToken.None));
+        }
+
+        using var verify = CreateContext();
+        var request = await verify.AccessRequests.SingleAsync(r => r.Id == id);
+        Assert.Equal(AccessRequestStatus.Pending, request.Status);
+    }
 }

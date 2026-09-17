@@ -75,17 +75,24 @@ else
                         <td style="min-width: 220px;">
                             @if (r.Status == AccessRequestApp.Domain.AccessRequestStatus.Pending)
                             {
-                                <form method="post" asp-page-handler="Approve" class="d-inline">
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                </form>
-                                <form method="post" asp-page-handler="Deny" class="mt-1">
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" name="reason" class="form-control" placeholder="Denial reason (required)" required maxlength="1000" />
-                                        <button type="submit" class="btn btn-danger">Deny</button>
-                                    </div>
-                                </form>
+                                @if (r.RequestedByUserId == Model.CurrentUserId)
+                                {
+                                    <span class="text-muted small">Your own request — cannot self-decide.</span>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="Approve" class="d-inline">
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Deny" class="mt-1">
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" name="reason" class="form-control" placeholder="Denial reason (required)" required maxlength="1000" />
+                                            <button type="submit" class="btn btn-danger">Deny</button>
+                                        </div>
+                                    </form>
+                                }
                             }
                         </td>
                     }

@@ -79,6 +79,13 @@ Implemented:
   from an authenticated employee session directly at the handler (see Manual Test Checklist); it
   was redirected to `AccessDenied` and the target request's state was untouched. Hiding the
   buttons in the UI is a usability nicety, not the security boundary.
+- **Segregation of duties: an admin cannot decide their own request.** `AccessRequestService`
+  folds `RequestedByUserId != administratorUserId` into the same conditional `UPDATE` used for the
+  Pending check, so self-approval is closed atomically alongside the concurrency guard, not as a
+  separate check that could race. The UI also hides the Approve/Deny controls on an admin's own
+  requests, but — as above — that's the usability layer; verified server-side by scripting a raw
+  POST past the hidden buttons and confirming the request stayed Pending (see Manual Test
+  Checklist).
 - **Trusted attribution.** `RequestedByUserId`/`DecidedByUserId` come from
   `UserManager.GetUserId(User)` on the server — never from a posted field. The create/approve/deny
   input models don't expose `Status`, timestamps, or user IDs as bindable properties at all
@@ -236,6 +243,9 @@ EF Core gotcha).
 - [ ] Log out, log in as `admin@example.test` / `Administrator1!`.
 - [ ] `/Requests` shows every request (not just the admin's own) with a **Requested By** column,
       showing the employee's display name (or email, if no name was set).
+- [ ] As admin, create a request for yourself — it shows "Your own request — cannot self-decide."
+      instead of Approve/Deny; a raw POST to `/Requests?handler=Approve` for that request's `id`
+      is rejected server-side too and the request stays Pending.
 - [ ] Approve a pending request — status flips to **Approved**, decided-by/at populate.
 - [ ] Deny a pending request without typing a reason — browser blocks submit (`required` field);
       submitting via a raw request without a reason is rejected server-side too.
