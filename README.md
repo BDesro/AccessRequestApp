@@ -33,6 +33,11 @@ dotnet tool install --global dotnet-ef
 These accounts are seeded only when `ASPNETCORE_ENVIRONMENT=Development` and must never be used
 in a real deployment.
 
+**Reproducibility:** the three commands above are everything required — no database file,
+secrets, or client-side libraries need to be supplied separately. Verified by cloning the repo
+into a clean directory and confirming the commands alone recreate the SQLite database (all
+migrations applying cleanly), seed both roles and demo users correctly, and allow immediate login.
+
 ### Run the tests
 
 ```bash
