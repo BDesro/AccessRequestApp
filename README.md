@@ -107,6 +107,15 @@ Implemented:
 - **Input validation**: `[Required]`/`[StringLength]` on `CreateAccessRequestInput`; a denial
   reason is required and enforced again in the service layer (not just the UI) since the service
   is the actual authority, not the page.
+- **Sessions don't survive an app restart.** By default, ASP.NET Core persists its Data Protection
+  keys to disk, so a sign-in cookie issued before the app was closed would still validate after
+  relaunching it — an old browser tab would just look signed in again with no re-authentication.
+  `Program.cs` uses `UseEphemeralDataProtectionProvider()` so keys live only in memory: every fresh
+  start invalidates every previously-issued cookie. Verified by logging in, killing the running
+  app, relaunching it, and confirming the same browser tab was bounced back to Login. This is the
+  right call for a locally-run tool restarted on demand; a real multi-instance/load-balanced
+  deployment would instead persist keys to shared storage so restarts and scale-out don't log
+  everyone out at once.
 - Razor Pages' default antiforgery protection is untouched (all state changes are POST forms).
 - All EF Core queries are LINQ (parameterized) — no raw SQL string concatenation.
 - Identity's built-in password hashing (PBKDF2) — no custom password code.

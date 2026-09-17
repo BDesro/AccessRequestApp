@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// By default, ASP.NET Core persists its Data Protection keys to disk, so a sign-in cookie issued
+// before the app was closed still validates after it's relaunched. Keeping keys in memory instead
+// means every fresh start invalidates old cookies, so a closed-and-reopened app always requires
+// signing in again — the right behavior for a locally-run demo tool, not a load-balanced service.
+builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
 // No email sender is configured, so account confirmation cannot happen via email.
 // Demo users are seeded pre-confirmed; this is not a production authentication setup.
