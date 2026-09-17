@@ -60,6 +60,10 @@ dotnet test
   would add DTOs, routing, and auth surface without a current benefit.
 - **No repository/unit-of-work/CQRS/MediatR abstractions.** EF Core's `DbContext` already is the
   unit of work; one small service interface is enough indirection for this size of app.
+- **Display name.** `ApplicationUser` (`AccessRequestApp/Data/ApplicationUser.cs`) extends
+  `IdentityUser` with optional `FirstName`/`LastName`. A user sets either or both on `/Profile`;
+  `GetDisplayName()` shows the name if set, otherwise falls back to email — used in the nav and in
+  the admin request list's "Requested By"/decision columns.
 
 ## Security & SOC 2 Considerations
 
@@ -227,8 +231,11 @@ EF Core gotcha).
 - [ ] Log in as `employee@example.test` / `Employee1!`.
 - [ ] Create a request via `/Requests/Create`; it appears on `/Requests` as **Pending**, with no
       Approve/Deny controls visible.
+- [ ] On `/Profile`, set a first name and save — the nav's "Hello ..." updates to the name
+      immediately; leave both fields blank and save — it reverts to showing the email.
 - [ ] Log out, log in as `admin@example.test` / `Administrator1!`.
-- [ ] `/Requests` shows every request (not just the admin's own) with a **Requested By** column.
+- [ ] `/Requests` shows every request (not just the admin's own) with a **Requested By** column,
+      showing the employee's display name (or email, if no name was set).
 - [ ] Approve a pending request — status flips to **Approved**, decided-by/at populate.
 - [ ] Deny a pending request without typing a reason — browser blocks submit (`required` field);
       submitting via a raw request without a reason is rejected server-side too.

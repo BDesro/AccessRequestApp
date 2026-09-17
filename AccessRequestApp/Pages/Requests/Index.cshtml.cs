@@ -18,7 +18,7 @@ namespace AccessRequestApp.Pages.Requests;
 public sealed class IndexModel(
     ApplicationDbContext db,
     IAccessRequestService requestService,
-    UserManager<IdentityUser> userManager,
+    UserManager<ApplicationUser> userManager,
     IAuthorizationService authorizationService,
     ILogger<IndexModel> logger) : PageModel
 {
@@ -52,9 +52,10 @@ public sealed class IndexModel(
             .Distinct()
             .ToList();
 
-        var displayNames = await db.Users
+        var displayNames = (await db.Users
             .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Email ?? u.UserName ?? u.Id, cancellationToken);
+            .ToListAsync(cancellationToken))
+            .ToDictionary(u => u.Id, u => u.GetDisplayName());
 
         Requests = requests
             .Select(r => new AccessRequestRow(

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using AccessRequestApp.Data;
 using AccessRequestApp.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace AccessRequestApp.Pages.Requests;
 
 [EnableRateLimiting("submission")]
-public sealed class CreateModel(IAccessRequestService requestService, UserManager<IdentityUser> userManager) : PageModel
+public sealed class CreateModel(IAccessRequestService requestService, UserManager<ApplicationUser> userManager) : PageModel
 {
     [BindProperty]
     public CreateAccessRequestInput Input { get; set; } = new();

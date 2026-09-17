@@ -12,7 +12,7 @@ public static class DemoIdentitySeeder
     public static async Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
         foreach (var role in new[] { ApplicationRoles.Employee, ApplicationRoles.Administrator })
         {
@@ -27,7 +27,7 @@ public static class DemoIdentitySeeder
     }
 
     private static async Task EnsureDemoUserAsync(
-        UserManager<IdentityUser> userManager,
+        UserManager<ApplicationUser> userManager,
         string email,
         string password,
         string role,
@@ -38,7 +38,8 @@ public static class DemoIdentitySeeder
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            user = new IdentityUser
+            // No FirstName/LastName seeded here on purpose — demonstrates the fallback to email.
+            user = new ApplicationUser
             {
                 UserName = email,
                 Email = email,
